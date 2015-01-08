@@ -1,0 +1,36 @@
+; This file is managed by SaltStack, do not edit by hand!!
+$ORIGIN .
+$TTL {{ soa.get('ttl', 604800) }} 
+{{ origin }}			IN SOA  {{ soa.get('ns',"localhost.") }} {{ soa.get('email',"root.localhost.") }} (
+                                {{ soa.get('sn') }}      ; serial
+                                {{ soa.get('ref', 604800) }}     ; refresh (1 week)
+                                {{ soa.get('ret', 86400) }}     ; retry (1 day)
+                                {{ soa.get('exp', 2419200) }}     ; expire (4 weeks)
+                                {{ soa.get('min', 604800) }}     ; minimum (1 week)
+                                )
+{%- if soa['ns'] is defined %}
+				NS {{ soa['ns'] }}
+{%- endif -%}
+{%- if soa['a'] is defined %}
+				A {{ soa['a'] }}
+{%- endif -%}
+{%- if soa['aaaa'] is defined %}
+				AAAA {{ soa['aaaa'] }}
+{%- endif %}
+
+$ORIGIN {{ origin }}
+{%- for name,opts in entries.iteritems() %}
+  {%- if opts.type == 'A' or opts.type == 'AAAA' %}
+{{ opts.get('host','') }} {{ opts.get('ttl','') }} {{opts.get('type')}} {{ opts.get('address') }} ;{{ name }}
+  {%- elif opts.type == 'CNAME' %}
+{{ opts.alias}}	{{ opts.get('ttl','') }}     CNAME	{{ opts.realname }}
+  {%- elif opts.type == 'MX' %}
+		{{ opts.get('ttl','') }}     MX	{{ opts.prefval }} {{ opts.servername }}
+  {%- elif opts.type == 'NS' %}
+		{{ opts.get('ttl','') }}     NS	{{ opts.servername }}
+  {%- elif opts.type == 'PTR' %}
+{{ opts.addr}}			   PTR	{{ opts.FQDN }}
+  {%- else %}
+{% for k,v in opts.iteritems() %}{{v}} {% endfor %}
+  {%- endif %}
+{%- endfor %}

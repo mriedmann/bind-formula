@@ -129,13 +129,16 @@ bind_default_zones:
 
 {% endif %}
 
-{% for key,args in salt['pillar.get']('bind:configured_zones', {}).iteritems()  -%}
-{%- set file = salt['pillar.get']("available_zones:" + key + ":file") %}
+{% for key,args in salt['pillar.get']('bind:zones', {}).iteritems()  -%}
+{%- set file = (["db.", key]|join) %}
 {% if args['type'] == "master" -%}
+{%- set soa = salt['pillar.get']('bind:zones:' + (key|string) + ':soa', {}) %}
+{%- set entries = salt['pillar.get']('bind:zones:' + (key|string) + ':entries', {}) %}
 zones-{{ file }}:
   file.managed:
     - name: {{ map.named_directory }}/{{ file }}
-    - source: 'salt://bind/zones/{{ file }}'
+    - source: 'salt://bind/files/zone.jinja'
+    - template: jinja
     - user: {{ salt['pillar.get']('bind:config:user', map.user) }}
     - group: {{ salt['pillar.get']('bind:config:group', map.group) }}
     - mode: {{ salt['pillar.get']('bind:config:mode', '644') }}
@@ -143,6 +146,17 @@ zones-{{ file }}:
       - service: bind
     - require:
       - file: {{ map.named_directory }}
+    - defaults:
+        soa:
+          - ttl: 604800
+          - ref: 604800
+          - ret: 86400
+          - exp: 2419200
+          - min: 604800
+    - context:
+        origin: {{ args['origin'] }}
+        soa: {{ args['soa'] }}
+        entries: {{ args['entries'] }}
 
 {% if args['dnssec'] is defined and args['dnssec'] -%}
 signed-{{file}}:
